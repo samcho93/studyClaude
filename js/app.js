@@ -61,9 +61,9 @@
     } else if (lang === "md" || lang === "markdown") {
       h = h.split("\n").map((ln) => /^#/.test(ln) ? `<span class="kw">${ln}</span>` : /^---$/.test(ln) ? `<span class="cm">${ln}</span>` : ln.replace(/^(\s*[-*] )/, '<span class="nb">$1</span>')).join("\n");
     } else if (lang === "js" || lang === "ts" || lang === "python" || lang === "py") {
-      h = h.replace(/(\/\/.*$|#.*$)/gm, '<span class="cm">$1</span>')
-        .replace(/(&quot;.*?&quot;|`[^`]*`|'[^']*')/g, '<span class="st">$1</span>')
-        .replace(/\b(import|from|const|let|await|async|for|of|in|function|return|if|else|def|with|as|export|new|print|class)\b/g, '<span class="kw">$1</span>');
+      // 한 번에 토큰화해야 이미 넣은 <span class="..."> 를 다시 건드리지 않음
+      h = h.replace(/(\/\/.*$|#.*$)|(&quot;.*?&quot;|`[^`]*`|'[^']*')|\b(import|from|const|let|await|async|for|of|in|function|return|if|else|def|with|as|export|new|print|class)\b/gm,
+        (m, c, str, kw) => c ? `<span class="cm">${c}</span>` : str ? `<span class="st">${str}</span>` : `<span class="kw">${kw}</span>`);
     }
     return h;
   }
