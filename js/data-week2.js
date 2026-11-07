@@ -357,7 +357,7 @@ window.WEEK2 = [
         tasks: [
           { goal: "테스트만 먼저 작성하라고 요청 ('테스트' + '구현하지 마' 포함)", hint: "isValidEmail 함수의 테스트를 먼저 써줘. 구현은 하지 마", match: /테스트.*(구현|코드).*(하지|쓰지|짜지|만들지)\s*마|테스트만/, mode: "claude", out: "{tool:⏺ Write}(src/email.test.js)\n  {dim:⎿ 테스트 5개: 정상 주소, @ 없음, 도메인 없음, 공백 포함, 빈 문자열}\n{ok:⏺} 테스트를 작성했습니다. 구현은 아직 하지 않았습니다." },
           { goal: "테스트를 실행해 실패 확인하기 (! 사용)", hint: "!npm test", match: /^!\s?npm (run )?test/, mode: "claude", out: "{err: FAIL  src/email.test.js}\n{err:  ✕ 정상 이메일은 true (Cannot find module './email')}\n{dim:Tests: 5 failed, 5 total}\n{warn:→ 예상대로 실패! (Red 단계)}" },
-          { goal: "테스트를 수정하지 말고 통과시키라고 요청", hint: "테스트는 수정하지 말고 모두 통과하도록 구현해줘", match: /테스트.*수정하지\s*마|수정\s*금지/, mode: "claude", out: "{tool:⏺ Write}(src/email.js)\n{tool:⏺ Bash}(npm test)\n  {err:⎿ 4 passed, 1 failed (공백 포함 주소)}\n{tool:⏺ Edit}(src/email.js)\n  {dim:⎿ 공백 검사 추가}\n{tool:⏺ Bash}(npm test)\n  {ok:⎿ 5 passed}\n{ok:⏺} 모든 테스트가 통과했습니다 (Green). 테스트 파일은 수정하지 않았습니다." },
+          { goal: "테스트를 수정하지 말고 통과시키라고 요청", hint: "테스트는 수정하지 말고 모두 통과하도록 구현해줘", match: /테스트.*수정하지\s*(마|말)|수정\s*금지/, mode: "claude", out: "{tool:⏺ Write}(src/email.js)\n{tool:⏺ Bash}(npm test)\n  {err:⎿ 4 passed, 1 failed (공백 포함 주소)}\n{tool:⏺ Edit}(src/email.js)\n  {dim:⎿ 공백 검사 추가}\n{tool:⏺ Bash}(npm test)\n  {ok:⎿ 5 passed}\n{ok:⏺} 모든 테스트가 통과했습니다 (Green). 테스트 파일은 수정하지 않았습니다." },
           { goal: "리팩터링을 요청하기", hint: "테스트 통과를 유지하면서 코드를 깔끔하게 리팩터링해줘", match: /리팩/, mode: "claude", out: "{tool:⏺ Edit}(src/email.js)\n  {dim:⎿ 정규식을 상수로 분리, 이름 정리}\n{tool:⏺ Bash}(npm test)\n  {ok:⎿ 5 passed}\n{ok:⏺} 리팩터링 완료 (Refactor). 순환 1회 끝!" },
         ],
       },

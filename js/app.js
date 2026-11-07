@@ -3,7 +3,9 @@
  * ========================================================= */
 (function () {
   const { el, esc } = window.Viz;
-  const WEEKS = [
+  const SITE = window.SITE || {};
+  const TITLE = SITE.title || "클로드 AI 배우기";
+  const WEEKS = SITE.weeks || [
     { n: 1, t: "1주차 — 기초", d: "설치부터 첫 번째 빌드까지, Claude Code 와 친해지기", c: "var(--w1)", i: "🧭" },
     { n: 2, t: "2주차 — 코딩 워크플로우", d: "프롬프트·설계·리뷰·문서·테스트·리팩토링", c: "var(--w2)", i: "🔍" },
     { n: 3, t: "3주차 — 자동화", d: "훅·MCP·헤드리스 실행·슬랙·CI/CD·SDK", c: "var(--w3)", i: "⚡" },
@@ -13,7 +15,7 @@
   const byId = (id) => LESSONS.find((l) => l.id === id);
 
   /* ---------- 저장소 (실패해도 동작) ---------- */
-  const KEY = "claude-study-progress-v1";
+  const KEY = SITE.storageKey || "claude-study-progress-v1";
   let store = { practice: {}, checks: {}, done: {}, theme: null };
   try { Object.assign(store, JSON.parse(localStorage.getItem(KEY) || "{}")); } catch (e) {}
   function save() { try { localStorage.setItem(KEY, JSON.stringify(store)); } catch (e) {} }
@@ -111,8 +113,8 @@
     const donePractice = Object.keys(store.practice).length;
     app.innerHTML = `
       <section class="hero">
-        <h1>클로드 AI 배우기</h1>
-        <p>프롬프팅 기초부터 자율형 개발 시스템 구축까지. 하루 30~60분, <b>4주 24일</b> 과정으로 Claude Code 를 손으로 익힙니다.</p>
+        <h1>${TITLE}</h1>
+        <p>${SITE.tagline || "프롬프팅 기초부터 자율형 개발 시스템 구축까지. 하루 30~60분, <b>4주 24일</b> 과정으로 Claude Code 를 손으로 익힙니다."}</p>
         <div class="hero-cta">
           <a class="btn primary" href="#/day/${next.id}">${done ? "이어서 학습하기" : "로드맵 시작하기"} → Day ${next.id}</a>
           <a class="btn" href="#/cheatsheet">⌨️ 명령어 모음</a>
@@ -282,13 +284,13 @@
     if ((m = hash.match(/^#\/day\/(\d+)/)) && byId(+m[1])) {
       const l = byId(+m[1]);
       renderLesson(app, l); renderSidebar(l.id);
-      document.title = `Day ${l.id}. ${l.title} — 클로드 AI 배우기`;
+      document.title = `Day ${l.id}. ${l.title} — ${TITLE}`;
     } else if (hash === "#/cheatsheet") {
-      window.Extras.cheatsheet(app); renderSidebar("cheatsheet"); document.title = "명령어 모음 — 클로드 AI 배우기";
+      window.Extras.cheatsheet(app); renderSidebar("cheatsheet"); document.title = `명령어 모음 — ${TITLE}`;
     } else if (hash === "#/glossary") {
-      window.Extras.glossary(app); renderSidebar("glossary"); document.title = "용어 사전 — 클로드 AI 배우기";
+      window.Extras.glossary(app); renderSidebar("glossary"); document.title = `용어 사전 — ${TITLE}`;
     } else {
-      renderHome(app); renderSidebar("home"); document.title = "클로드 AI 배우기";
+      renderHome(app); renderSidebar("home"); document.title = TITLE;
     }
     window.scrollTo(0, 0);
     updateProgress();

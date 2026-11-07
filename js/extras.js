@@ -2,7 +2,8 @@
 (function () {
   const { el, esc } = window.Viz;
 
-  const CHEATS = [
+  const SITE = window.SITE || {};
+  const CHEATS = SITE.cheats || [
     { g: "🚀 실행 (터미널)", items: [
       ["claude", "대화형 모드 시작", 1], ["claude \"질문\"", "첫 메시지와 함께 시작", 2], ["claude -c", "가장 최근 대화 이어가기", 2], ["claude -r", "이전 대화 골라서 이어가기", 2],
       ["claude -p \"요청\"", "한 번 실행 후 결과만 출력 (헤드리스)", 15], ["claude --permission-mode plan", "Plan 모드로 시작", 4], ["claude --version", "버전 확인", 1], ["claude doctor", "설치 상태 진단", 1],
@@ -35,7 +36,7 @@
     ] },
   ];
 
-  const GLOSS = [
+  const GLOSS = SITE.glossary || [
     ["에이전트", "Agent", "목표를 받으면 스스로 계획하고 도구를 사용해 실행·검증을 반복하는 AI."],
     ["프롬프트", "Prompt", "AI 에게 주는 요청·지시문. 목표·맥락·제약·완료 기준을 담을수록 좋다."],
     ["컨텍스트", "Context", "AI 가 한 번에 기억하고 참고할 수 있는 대화·파일 내용. 길어지면 /compact, 주제가 바뀌면 /clear."],

@@ -34,8 +34,12 @@
     "{dim:  Tip: Shift+Tab 으로 Plan 모드 전환, @파일 로 파일 참조}",
   ].join("\n");
 
-  const SHELL_CMDS = [
+  const CLAUDE_SHELL = [
     [/^help$/, () => "사용 가능한 (시뮬레이션) 명령: ls, pwd, cd, cat, node -v, npm -v, git status, claude, claude --version, claude -p \"...\", clear\n{dim:※ 오른쪽 과제 목록을 따라 입력해 보세요.}"],
+    [/^claude (-v|--version)$/, () => "2.x.x (Claude Code)"],
+    [/^claude doctor$/, () => "{ok:✓} 설치 상태 정상\n{ok:✓} 인증 정보 확인됨\n{ok:✓} 업데이트 채널: latest"],
+  ];
+  const BASE_SHELL = [
     [/^ls( -la?)?$/, (c, st) => st.files.join("  ")],
     [/^pwd$/, () => "/home/me/my-project"],
     [/^cd\b/, () => "{dim:(시뮬레이션에서는 디렉터리가 고정되어 있습니다)}"],
@@ -46,8 +50,6 @@
     [/^git --version$/, () => "git version 2.47.0"],
     [/^git status$/, () => "On branch main\nnothing to commit, working tree clean"],
     [/^git log.*$/, () => "{warn:a1b2c3d} (HEAD -> main) 첫 커밋\n{warn:9f8e7d6} 프로젝트 초기화"],
-    [/^claude (-v|--version)$/, () => "2.x.x (Claude Code)"],
-    [/^claude doctor$/, () => "{ok:✓} 설치 상태 정상\n{ok:✓} 인증 정보 확인됨\n{ok:✓} 업데이트 채널: latest"],
     [/^cat (.+)$/, (c, st, m) => st.cat[m[1]] || `{err:cat: ${m[1]}: 파일이 없습니다 (시뮬레이션)}`],
     [/^echo (.*)$/, (c, st, m) => m[1].replace(/^["']|["']$/g, "")],
   ];
@@ -85,17 +87,38 @@
     return lines.join("\n");
   }
 
+  /* 사이트별 시뮬레이터 설정 (window.SITE.sim 으로 덮어쓰기) — 기본값은 Claude Code */
+  const S = (window.SITE && window.SITE.sim) || {};
+  const SIM = {
+    name: S.name || "Claude Code",                 // 안쪽 모드(에이전트/셸) 이름
+    launchCmd: S.launchCmd || "claude",             // 안내 문구용 실행 명령
+    launch: S.launch || /^claude$/,                 // 안쪽 모드로 들어가는 명령
+    headless: S.headless || /^claude -p /,          // 일회성 실행 명령 (일반 응답)
+    banner: S.banner !== undefined ? S.banner : CLAUDE_BANNER,
+    shellCmds: (S.shellCmds || CLAUDE_SHELL).concat(BASE_SHELL),
+    agentCmds: S.agentCmds || CLAUDE_CMDS,
+    generic: S.generic || genericClaude,
+    exit: S.exit || /^(\/exit|exit|\/quit)$/,
+    exitMsg: S.exitMsg || "{dim:Claude Code 를 종료했습니다.}",
+    bang: S.bang !== undefined ? S.bang : true,      // ! 로 셸 명령 실행 지원
+    shellPrompt: S.shellPrompt || "~/my-project $",
+    agentPrompt: S.agentPrompt || ">",
+    agentPlaceholder: S.agentPlaceholder || "Claude 에게 요청하거나 / 명령 입력…",
+    unknownAgent: S.unknownAgent || ((cmd) => cmd.startsWith("/") ? `{err:알 수 없는 명령: ${cmd}} {dim:(/help 로 목록 보기)}` : null),
+  };
+  const normMode = (m) => (m === "agent" ? "claude" : m);
+
   function terminal(spec, ctx) {
     const f = frame(spec, "💻 터미널 실습", ctx.isDone);
     const st = {
-      mode: spec.startMode || "shell",
+      mode: normMode(spec.startMode) || "shell",
       files: spec.files || ["package.json", "src/", "README.md"],
       cat: spec.cat || {},
       mcp: [],
       task: 0,
       history: [], hi: 0, busy: false,
     };
-    const tasks = spec.tasks;
+    const tasks = spec.tasks.map((t) => Object.assign({}, t, { mode: normMode(t.mode), enter: normMode(t.enter) }));
     const wrap = el("div", { class: "term-wrap" });
     const term = el("div", { class: "terminal" });
     term.innerHTML = `<div class="term-bar"><i></i><i></i><i></i>${esc(spec.window || "Terminal — my-project")}</div>`;
@@ -128,8 +151,8 @@
     f.body.appendChild(wrap);
 
     function renderPrompt() {
-      if (st.mode === "claude") { prompt.textContent = ">"; prompt.className = "prompt claude"; input.placeholder = "Claude 에게 요청하거나 / 명령 입력…"; }
-      else { prompt.textContent = "~/my-project $"; prompt.className = "prompt"; input.placeholder = "명령어를 입력하고 Enter"; }
+      if (st.mode === "claude") { prompt.textContent = SIM.agentPrompt; prompt.className = "prompt claude"; input.placeholder = SIM.agentPlaceholder; }
+      else { prompt.textContent = SIM.shellPrompt; prompt.className = "prompt"; input.placeholder = "명령어를 입력하고 Enter"; }
     }
     function refreshTasks() {
       taskEls.forEach((d, i) => { d.classList.toggle("done", i < st.task); d.classList.toggle("cur", i === st.task); });
@@ -153,7 +176,7 @@
 
     async function run(raw) {
       const cmd = raw.trim().replace(/\s+/g, " ");
-      const p = st.mode === "claude" ? '<span class="pc">&gt;</span> ' : '<span class="ps">~/my-project $</span> ';
+      const p = st.mode === "claude" ? `<span class="pc">${esc(SIM.agentPrompt)}</span> ` : `<span class="ps">${esc(SIM.shellPrompt)}</span> `;
       line(p + `<span class="in">${esc(raw)}</span>`);
       if (!cmd) return;
       if (cmd === "clear" || (st.mode === "claude" && cmd === "/clear" && !(tasks[st.task] && tasks[st.task].match.test(cmd)))) { out.innerHTML = ""; if (cmd === "clear") return; }
@@ -163,7 +186,7 @@
         const o = typeof t.out === "function" ? t.out(cmd, st) : t.out;
         if (t.enter) st.mode = t.enter;
         if (t.addMcp) st.mcp.push(t.addMcp);
-        if (t.enter === "claude" && !t.noBanner) await print(CLAUDE_BANNER);
+        if (t.enter === "claude" && !t.noBanner && SIM.banner) await print(SIM.banner);
         if (o) await print(o, st.mode === "claude" || t.stream);
         st.task++;
         refreshTasks(); renderPrompt();
@@ -174,20 +197,21 @@
         return;
       }
       if (t && t.mode && t.mode !== st.mode && t.match.test(cmd)) {
-        return print(t.mode === "claude" ? "{warn:이 과제는 Claude Code 안에서 입력해야 합니다. 먼저 'claude' 를 실행하세요.}" : "{warn:이 과제는 일반 터미널에서 입력합니다. /exit 로 Claude Code 를 빠져나오세요.}");
+        return print(t.mode === "claude" ? `{warn:이 과제는 ${SIM.name} 안에서 입력해야 합니다. 먼저 '${SIM.launchCmd}' 를 실행하세요.}` : `{warn:이 과제는 일반 터미널에서 입력합니다. 먼저 ${SIM.name} 를 빠져나오세요.}`);
       }
 
       if (st.mode === "shell") {
-        if (/^claude$/.test(cmd)) { st.mode = "claude"; renderPrompt(); return print(CLAUDE_BANNER); }
-        if (/^claude -p /.test(cmd)) return print(genericClaude(cmd), true);
-        for (const [re, fn] of SHELL_CMDS) { const m = cmd.match(re); if (m) return print(fn(cmd, st, m)); }
+        if (SIM.launch.test(cmd)) { st.mode = "claude"; renderPrompt(); return SIM.banner ? print(SIM.banner) : undefined; }
+        if (SIM.headless && SIM.headless.test(cmd)) return print(SIM.generic(cmd, st), true);
+        for (const [re, fn] of SIM.shellCmds) { const m = cmd.match(re); if (m) return print(fn(cmd, st, m)); }
         return print(`{err:명령을 찾을 수 없습니다: ${cmd.split(" ")[0]}}\n{dim:힌트: 오른쪽 과제의 '💡 힌트 보기' 를 눌러 보세요. (help 입력 시 명령 목록)}`);
       } else {
-        if (/^(\/exit|exit|\/quit)$/.test(cmd)) { st.mode = "shell"; renderPrompt(); return print("{dim:Claude Code 를 종료했습니다.}"); }
-        if (cmd.startsWith("!")) return print(`{dim:(bash 모드)} ${esc(cmd.slice(1))}\n{dim:⎿ 명령을 실행하고 결과를 대화에 추가했습니다}`);
-        for (const [re, fn] of CLAUDE_CMDS) { const m = cmd.match(re); if (m) return print(fn(cmd, st, m)); }
-        if (cmd.startsWith("/")) return print(`{err:알 수 없는 명령: ${cmd}} {dim:(/help 로 목록 보기)}`);
-        return print(genericClaude(cmd), true);
+        if (SIM.exit.test(cmd)) { st.mode = "shell"; renderPrompt(); return print(SIM.exitMsg); }
+        if (SIM.bang && cmd.startsWith("!")) return print(`{dim:(셸 명령)} ${esc(cmd.slice(1))}\n{dim:⎿ 명령을 실행하고 결과를 대화에 추가했습니다}`);
+        for (const [re, fn] of SIM.agentCmds) { const m = cmd.match(re); if (m) return print(fn(cmd, st, m)); }
+        const unk = SIM.unknownAgent(cmd, st);
+        if (unk) return print(unk);
+        return print(SIM.generic(cmd, st), true);
       }
     }
 
@@ -205,7 +229,7 @@
     });
 
     renderPrompt();
-    if (st.mode === "claude") print(CLAUDE_BANNER);
+    if (st.mode === "claude" && SIM.banner) print(SIM.banner);
     line(fmt(spec.welcome || "{dim:# 오른쪽 과제를 순서대로 입력해 보세요. 막히면 '💡 힌트 보기'를 누르세요.}"));
     if (ctx.isDone) { st.task = 0; }
     refreshTasks();
